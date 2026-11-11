@@ -15,15 +15,14 @@ import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ModelEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.Tags;
 import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -74,67 +73,58 @@ public class PlaceableIngots {
 
     @SubscribeEvent
     public void useItemOnBlock(PlayerInteractEvent.RightClickBlock event) {
-        if (event.getLevel().isClientSide())return;
+        if (event.getLevel().isClientSide()) return;
+
         Player player = event.getEntity();
-        if (event.getItemStack().is(Tags.Items.INGOTS) && player.mayBuild() && player.isCrouching()){
-            BlockPos pos = event.getHitVec().getBlockPos();
-            BlockState state = event.getLevel().getBlockState(pos);
-            if (state.is(INGOT_BLOCK.get())){
-                if(state.getValue(IngotBlock.COUNT) == 64){
-                    for (int i = 1; i < event.getLevel().getMaxBuildHeight(); i++){
-                        BlockPos pos1 = pos.offset(0,i,0);
-                        if (event.getLevel().getBlockState(pos1).isAir()){
-                            event.getLevel().setBlockAndUpdate(pos1,INGOT_BLOCK.get().defaultBlockState());
-                            event.getLevel().getBlockEntity(pos1,INGOT_BLOCK_ENTITY.get()).ifPresent(be->{
-                                ((IngotBlockEntity)be).addIngot(event.getItemStack().copyWithCount(1));
-                                ((IngotBlockEntity) be).markForSync();
-                            });
-                            event.setUseItem(Event.Result.ALLOW);
-                            event.setCancellationResult(InteractionResult.CONSUME);
-                            event.setCanceled(true);
-                            break;
-                        } else if (event.getLevel().getBlockState(pos1).is(INGOT_BLOCK.get())){
-                            if (event.getLevel().getBlockState(pos1).getValue(IngotBlock.COUNT) == 64)continue;
-                            event.getLevel().getBlockEntity(pos1,INGOT_BLOCK_ENTITY.get()).ifPresent(be->{
-                                ((IngotBlockEntity)be).addIngot(event.getItemStack().copyWithCount(1));
-                                consumeItem(event.getItemStack(),player);
-                            });
-                            event.setUseItem(Event.Result.ALLOW);
-                            event.setCancellationResult(InteractionResult.CONSUME);
-                            event.setCanceled(true);
-                            break;
-                        }
+        ItemStack stack = event.getItemStack();
+        if (stack.isEmpty() || !stack.is(Tags.Items.INGOTS) || !player.mayBuild() || !player.isCrouching()) return;
+
+        BlockPos clickedPos = event.getHitVec().getBlockPos();
+        BlockPos targetPos = clickedPos;
+        boolean stored = false;
+        if (event.getLevel().getBlockState(clickedPos).is(INGOT_BLOCK.get())) {
+            while (targetPos.getY() < event.getLevel().getMaxBuildHeight()) {
+                if (event.getLevel().getBlockState(targetPos).is(INGOT_BLOCK.get())) {
+                    if (!(event.getLevel().getBlockEntity(targetPos) instanceof IngotBlockEntity blockEntity)) return;
+                    if (blockEntity.getIngots().size() < 64) {
+                        blockEntity.addIngot(stack.copyWithCount(1));
+                        stored = true;
+                        break;
                     }
-                } else {
-                    event.getLevel().getBlockEntity(pos,INGOT_BLOCK_ENTITY.get()).ifPresent(i->{
-                        ((IngotBlockEntity)i).addIngot(event.getItemStack().copyWithCount(1));
-                        consumeItem(event.getItemStack(),player);
-                    });
-                    event.setUseItem(Event.Result.ALLOW);
-                    event.setCancellationResult(InteractionResult.CONSUME);
-                    event.setCanceled(true);
+                    targetPos = targetPos.above();
+                    continue;
                 }
-            } else {
-                pos = pos.relative(event.getFace());
-                state = event.getLevel().getBlockState(pos);
-                if (state.isAir()){
-                    event.getLevel().setBlockAndUpdate(pos,INGOT_BLOCK.get().defaultBlockState());
-                    event.getLevel().getBlockEntity(pos,INGOT_BLOCK_ENTITY.get()).ifPresent(be->{
-                        ((IngotBlockEntity)be).addIngot(event.getItemStack().copyWithCount(1));
-                        ((IngotBlockEntity) be).markForSync();
-                    });
-                    event.setUseItem(Event.Result.ALLOW);
-                    event.setCancellationResult(InteractionResult.CONSUME);
-                    event.setCanceled(true);
-                }
+
+                if (!event.getLevel().getBlockState(targetPos).isAir()) return;
+                stored = placeIngot(event, targetPos, stack);
+                break;
             }
+        } else {
+            targetPos = clickedPos.relative(event.getFace());
+            if (!event.getLevel().getBlockState(targetPos).isAir()) return;
+            stored = placeIngot(event, targetPos, stack);
         }
+
+        if (!stored) return;
+        consumeItem(stack, player, event.getHand());
+        event.setCancellationResult(InteractionResult.CONSUME);
+        event.setCanceled(true);
     }
 
-    private void consumeItem(ItemStack stack,Player player){
-        if (player == null || !player.getAbilities().instabuild) {
-            stack.setCount(stack.getCount() -1 );
-            if (player != null) player.swing(InteractionHand.MAIN_HAND);
+    private boolean placeIngot(PlayerInteractEvent.RightClickBlock event, BlockPos pos, ItemStack stack) {
+        if (!event.getLevel().setBlockAndUpdate(pos, INGOT_BLOCK.get().defaultBlockState())) return false;
+        if (!(event.getLevel().getBlockEntity(pos) instanceof IngotBlockEntity blockEntity)) {
+            event.getLevel().setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState());
+            return false;
+        }
+        blockEntity.addIngot(stack.copyWithCount(1));
+        return true;
+    }
+
+    private void consumeItem(ItemStack stack, Player player, InteractionHand hand) {
+        if (!player.getAbilities().instabuild) {
+            stack.shrink(1);
+            player.swing(hand);
         }
     }
 

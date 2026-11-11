@@ -59,7 +59,6 @@ public class IngotBlock extends BaseEntityBlock {
     @Override
     public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult p_60508_) {
         if (level.isClientSide()) return InteractionResult.sidedSuccess(true);
-        if (super.use(state, level, pos, player, hand, p_60508_).consumesAction()) return InteractionResult.CONSUME;
         if (hand != InteractionHand.MAIN_HAND) return InteractionResult.PASS;
         if (!(level.getBlockEntity(pos) instanceof IngotBlockEntity be)) return InteractionResult.PASS;
         if (!player.getMainHandItem().isEmpty()) return InteractionResult.PASS;

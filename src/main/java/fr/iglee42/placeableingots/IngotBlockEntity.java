@@ -1,22 +1,14 @@
 package fr.iglee42.placeableingots;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -52,7 +44,7 @@ public class IngotBlockEntity extends BlockEntity {
 
     public void addIngot(ItemStack ingot){
         ingots.add(ingot);
-        markForSync();
+        setChanged();
     }
 
 
@@ -66,6 +58,13 @@ public class IngotBlockEntity extends BlockEntity {
     }
 
     @Override
+    public void onDataPacket(Connection net, ClientboundBlockEntityDataPacket pkt) {
+        super.onDataPacket(net, pkt);
+        if (level != null)
+            level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState().setValue(COUNT,ingots.size()), 3);
+    }
+
+    @Override
     public ClientboundBlockEntityDataPacket getUpdatePacket()
     {
         return ClientboundBlockEntityDataPacket.create(this);
@@ -74,24 +73,16 @@ public class IngotBlockEntity extends BlockEntity {
 
     public ItemStack removeLastIngot() {
         ItemStack stack = ingots.remove(ingots.size() - 1);
-        markForSync();
+        setChanged();
         return stack.copyWithCount(1);
     }
 
-    public void markForSync()
+    public void setChanged()
     {
-        sendVanillaUpdatePacket();
-        setChanged();
-    }
-
-    public final void sendVanillaUpdatePacket()
-    {
-        final ClientboundBlockEntityDataPacket packet = getUpdatePacket();
-        final BlockPos pos = getBlockPos();
-        if (packet != null && level instanceof ServerLevel serverLevel)
-        {
-            serverLevel.getChunkSource().chunkMap.getPlayers(new ChunkPos(pos), false).forEach(e -> e.connection.send(packet));
-            if (!ingots.isEmpty())serverLevel.setBlockAndUpdate(pos,getBlockState().setValue(COUNT,ingots.size()));
+        if (level != null && !level.isClientSide){
+            level.setBlockAndUpdate(getBlockPos(),getBlockState().setValue(COUNT,ingots.size()));
+            super.setChanged();
         }
     }
+
 }
