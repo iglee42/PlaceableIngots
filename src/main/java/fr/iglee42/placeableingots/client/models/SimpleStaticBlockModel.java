@@ -19,8 +19,8 @@ import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.client.model.data.ModelData;
-import net.minecraftforge.client.model.pipeline.QuadBakingVertexConsumer;
+import net.neoforged.neoforge.client.model.data.ModelData;
+import net.neoforged.neoforge.client.model.pipeline.QuadBakingVertexConsumer;
 import org.jetbrains.annotations.NotNull;
 
 public interface SimpleStaticBlockModel<T extends IBakedGeometry<T>> extends IBakedGeometry<T>, IStaticBakedModel
@@ -40,15 +40,25 @@ public interface SimpleStaticBlockModel<T extends IBakedGeometry<T>> extends IBa
         return modelData;
     }
 
+
     default StaticModelData render(BlockAndTintGetter level, BlockPos pos,BlockEntity blockEntity)
     {
         final int packedLight = LightTexture.pack(level.getBrightness(LightLayer.BLOCK, pos), level.getBrightness(LightLayer.SKY, pos));
         final int packedOverlay = OverlayTexture.NO_OVERLAY;
         final List<BakedQuad> quads = new ArrayList<>(faces(level.getBlockState(pos)));
-        final VertexConsumer buffer = new QuadBakingVertexConsumer(quads::add);
+        final QuadBakingVertexConsumer buffer = new QuadBakingVertexConsumer()
+        {
+            @Override
+            public BakedQuad bakeQuad()
+            {
+                final BakedQuad quad = super.bakeQuad();
+                quads.add(quad);
+                return quad;
+            }
+        };
         final PoseStack poseStack = new PoseStack();
 
-        final TextureAtlasSprite particle = render( poseStack, buffer, packedLight, packedOverlay,level.getBlockState(pos),blockEntity);
+        final TextureAtlasSprite particle = render(poseStack, buffer, packedLight, packedOverlay,level.getBlockState(pos),blockEntity);
         return new StaticModelData(quads, particle);
     }
 

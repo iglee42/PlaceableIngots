@@ -3,7 +3,7 @@ package fr.iglee42.placeableingots.config;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
-import net.minecraftforge.fml.loading.FMLPaths;
+import net.neoforged.fml.loading.FMLPaths;
 
 import java.io.File;
 import java.io.FileReader;
@@ -19,9 +19,6 @@ public class ClientConfig {
     private static File configFile;
 
     public static Map<String, Integer> colorOverrides = new HashMap<>();
-
-
-
 
     public static void load() throws IOException, IllegalAccessException {
         configFile = new File(FMLPaths.CONFIGDIR.get().toFile(),"placeableingots-client.json");

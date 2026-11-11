@@ -8,21 +8,12 @@ import fr.iglee42.placeableingots.IngotBlockEntity;
 import fr.iglee42.placeableingots.ItemColorHelper;
 import fr.iglee42.placeableingots.PlaceableIngots;
 import fr.iglee42.placeableingots.client.RenderHelpers;
-import fr.iglee42.placeableingots.config.ClientConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.client.model.data.ModelData;
-import net.minecraftforge.registries.ForgeRegistries;
-
-import java.awt.*;
-import java.util.HashMap;
-import java.util.Map;
 
 public class IngotBlockModel implements SimpleStaticBlockModel<IngotBlockModel> {
 
@@ -38,7 +29,7 @@ public class IngotBlockModel implements SimpleStaticBlockModel<IngotBlockModel> 
         float xSize = 14*pixelSize;
         float ySize = 4*pixelSize;
         float zSize = 6*pixelSize;
-        TextureAtlasSprite sprite = Minecraft.getInstance().getTextureAtlas(BLOCKS_ATLAS).apply(new ResourceLocation(PlaceableIngots.MODID,"block/ingot"));
+        TextureAtlasSprite sprite = Minecraft.getInstance().getTextureAtlas(BLOCKS_ATLAS).apply( ResourceLocation.fromNamespaceAndPath(PlaceableIngots.MODID,"block/ingot"));
 
         for (int i = 0; i < state.getValue(IngotBlock.COUNT); i++){
             poseStack.pushPose();

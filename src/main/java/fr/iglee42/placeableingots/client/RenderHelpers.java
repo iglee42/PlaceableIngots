@@ -9,14 +9,19 @@ package fr.iglee42.placeableingots.client;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.core.Direction;
+import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.neoforged.neoforge.client.model.pipeline.QuadBakingVertexConsumer;
+import org.joml.Vector3f;
 
 
 public final class RenderHelpers
 {
     public static void renderTexturedCuboid(PoseStack poseStack, VertexConsumer buffer, TextureAtlasSprite sprite, int packedLight, int packedOverlay, float minX, float minY, float minZ, float maxX, float maxY, float maxZ, boolean doShade,int color)
     {
-        renderTexturedCuboid(poseStack, buffer, sprite, packedLight, packedOverlay, minX, minY, minZ, maxX, maxY, maxZ, 16f * (maxX - minX), 16f * (maxY - minY), 16f * (maxZ - minZ), doShade,color);
+        renderTexturedCuboid(poseStack, buffer, sprite, packedLight, packedOverlay, minX, minY, minZ, maxX, maxY, maxZ,  (maxX - minX),  (maxY - minY),  (maxZ - minZ), doShade,color);
     }
 
     /**
@@ -42,9 +47,27 @@ public final class RenderHelpers
      */
     public static void renderTexturedQuads(PoseStack poseStack, VertexConsumer buffer, TextureAtlasSprite sprite, int packedLight, int packedOverlay, float[][] vertices, float uSize, float vSize, float normalX, float normalY, float normalZ, boolean doShade,int color)
     {
-        for (float[] v : vertices)
+        final QuadBakingVertexConsumer quadBuffer = buffer instanceof QuadBakingVertexConsumer bakingBuffer ? bakingBuffer : null;
+        if (quadBuffer != null)
         {
+            quadBuffer.setSprite(sprite);
+            quadBuffer.setShade(doShade);
+            quadBuffer.setHasAmbientOcclusion(true);
+        }
+
+        for (int i = 0; i < vertices.length; i++)
+        {
+            final float[] v = vertices[i];
+            if (quadBuffer != null && i % 4 == 0)
+            {
+                final Vector3f normal = poseStack.last().normal().transform(new Vector3f(v[5] * normalX, v[5] * normalY, v[5] * normalZ));
+                quadBuffer.setDirection(Direction.getNearest(normal.x, normal.y, normal.z));
+            }
             renderTexturedVertex(poseStack, buffer, packedLight, packedOverlay, v[0], v[1], v[2], sprite.getU(v[3] * uSize), sprite.getV(v[4] * vSize), v[5] * normalX, v[5] * normalY, v[5] * normalZ, doShade,color);
+            if (quadBuffer != null && i % 4 == 3)
+            {
+                quadBuffer.bakeQuad();
+            }
         }
     }
 
@@ -52,14 +75,13 @@ public final class RenderHelpers
     public static void renderTexturedVertex(PoseStack poseStack, VertexConsumer buffer, int packedLight, int packedOverlay, float x, float y, float z, float u, float v, float normalX, float normalY, float normalZ, boolean doShade,int color)
     {
         final float shade = doShade ? getShade(normalX, normalY, normalZ) : 1f;
-        buffer.vertex(poseStack.last().pose(), x, y, z)
-                .color(shade, shade, shade, 1f)
-                .uv(u, v)
-                .uv2(packedLight)
-                .color(color)
-                .overlayCoords(packedOverlay)
-                .normal(poseStack.last().normal(), normalX, normalY, normalZ)
-                .endVertex();
+        buffer.addVertex(poseStack.last().pose(), x, y, z)
+                .setColor(shade, shade, shade, 1f)
+                .setUv(u, v)
+                .setUv2(LightTexture.block(packedLight), LightTexture.sky(packedLight))
+                .setColor(color)
+                .setUv1(OverlayTexture.u(packedOverlay), OverlayTexture.v(true))
+                .setNormal(poseStack.last(), normalX, normalY, normalZ);
     }
 
     public static float getShade(float normalX, float normalY, float normalZ)

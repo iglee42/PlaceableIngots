@@ -1,6 +1,7 @@
 package fr.iglee42.placeableingots;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.network.Connection;
@@ -24,19 +25,20 @@ public class IngotBlockEntity extends BlockEntity {
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag) {
-        super.saveAdditional(tag);
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
         ListTag list = new ListTag();
-        ingots.forEach(s->list.add(s.save(new CompoundTag())));
+        ingots.forEach(s->list.add(s.save(registries, new CompoundTag())));
         tag.put("items",list);
     }
 
     @Override
-    public void load(CompoundTag tag) {
+    public void loadAdditional(CompoundTag tag,HolderLookup.Provider registries) {
         ingots.clear();
-        tag.getList("items",ListTag.TAG_COMPOUND).forEach(t-> ingots.add(ItemStack.of((CompoundTag) t)));
-        super.load(tag);
+        tag.getList("items",ListTag.TAG_COMPOUND).forEach(t-> ingots.add(ItemStack.parseOptional(registries,(CompoundTag) t)));
+        super.loadAdditional(tag, registries);
     }
+
 
     public List<ItemStack> getIngots() {
         return ingots;
@@ -49,17 +51,17 @@ public class IngotBlockEntity extends BlockEntity {
 
 
     @Override
-    public @NotNull CompoundTag getUpdateTag() {
+    public @NotNull CompoundTag getUpdateTag(HolderLookup.Provider registries) {
         CompoundTag tag = new CompoundTag();
         ListTag list = new ListTag();
-        ingots.forEach(s->list.add(s.save(new CompoundTag())));
+        ingots.forEach(s->list.add(s.save(registries, new CompoundTag())));
         tag.put("items",list);
         return tag;
     }
 
     @Override
-    public void onDataPacket(Connection net, ClientboundBlockEntityDataPacket pkt) {
-        super.onDataPacket(net, pkt);
+    public void onDataPacket(Connection net, ClientboundBlockEntityDataPacket pkt, HolderLookup.Provider registries) {
+        super.onDataPacket(net, pkt, registries);
         if (level != null)
             level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState().setValue(COUNT,ingots.size()), 3);
     }

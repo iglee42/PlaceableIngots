@@ -15,17 +15,17 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.util.FastColor;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.TextureStitchEvent;
-import net.minecraftforge.client.model.data.ModelData;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.TextureAtlasStitchedEvent;
+import net.neoforged.neoforge.client.model.data.ModelData;
 
 import java.awt.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-@Mod.EventBusSubscriber(modid = PlaceableIngots.MODID,value = Dist.CLIENT)
+@EventBusSubscriber(modid = PlaceableIngots.MODID,value = Dist.CLIENT)
 public class ItemColorHelper {
 
     public static final LoadingCache<Item, Integer> ITEM_COLOR =
@@ -37,7 +37,7 @@ public class ItemColorHelper {
             });
 
     @SubscribeEvent
-    public static void cleanCache(TextureStitchEvent.Post event){
+    public static void cleanCache(TextureAtlasStitchedEvent event){
         if (event.getAtlas().location().equals(TextureAtlas.LOCATION_BLOCKS)) {
             ITEM_COLOR.invalidateAll();
         }

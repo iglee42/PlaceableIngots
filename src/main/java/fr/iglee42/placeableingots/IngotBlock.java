@@ -1,5 +1,6 @@
 package fr.iglee42.placeableingots;
 
+import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
@@ -22,7 +23,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.minecraftforge.common.Tags;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -32,7 +32,7 @@ public class IngotBlock extends BaseEntityBlock {
     public static final IntegerProperty COUNT = IntegerProperty.create("count",0,64);
 
     public IngotBlock() {
-        super(Properties.copy(Blocks.IRON_BLOCK).noOcclusion().strength(5,6));
+        super(Properties.ofFullCopy(Blocks.IRON_BLOCK).noOcclusion().strength(5,6));
         registerDefaultState(defaultBlockState().setValue(COUNT,0));
     }
 
@@ -52,14 +52,18 @@ public class IngotBlock extends BaseEntityBlock {
     }
 
     @Override
+    protected MapCodec<? extends BaseEntityBlock> codec() {
+        return null;
+    }
+
+    @Override
     public RenderShape getRenderShape(BlockState p_49232_) {
         return RenderShape.MODEL;
     }
 
     @Override
-    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult p_60508_) {
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
         if (level.isClientSide()) return InteractionResult.sidedSuccess(true);
-        if (hand != InteractionHand.MAIN_HAND) return InteractionResult.PASS;
         if (!(level.getBlockEntity(pos) instanceof IngotBlockEntity be)) return InteractionResult.PASS;
         if (!player.getMainHandItem().isEmpty()) return InteractionResult.PASS;
         if (player.isCrouching()) return InteractionResult.PASS;
